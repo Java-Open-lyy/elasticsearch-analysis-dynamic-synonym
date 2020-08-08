@@ -316,8 +316,7 @@ public final class DynamicSynonymFilter extends TokenFilter {
     }
 
     // Interleaves all output tokens onto the futureOutputs:
-    private void addOutput(BytesRef bytes, int matchInputLength,
-                           int matchEndOffset) {
+    private void addOutput(BytesRef bytes, int matchInputLength, int matchEndOffset) {
         bytesReader.reset(bytes.bytes, bytes.offset, bytes.length);
 
         final int code = bytesReader.readVInt();
@@ -325,18 +324,29 @@ public final class DynamicSynonymFilter extends TokenFilter {
         final int count = code >>> 1;
         for (int outputIDX = 0; outputIDX < count; outputIDX++) {
             synonyms.words.get(bytesReader.readVInt(), scratchBytes);
+            // System.out.println(scratchBytes.toString());
             scratchChars.copyUTF8Bytes(scratchBytes);
+            // lyy: remove all space char
+            int charLength = scratchChars.toString().toCharArray().length;
+            char[] charArray = new char[charLength];
+            int noEmpty = 0;
+            for (int i = 0; i < charLength; i++) {
+                if (scratchChars.charAt(i) != SynonymMap.WORD_SEPARATOR) {
+                    charArray[noEmpty] = scratchChars.charAt(i);
+                    noEmpty++;
+                }
+            }
+            char[] noEmptyArray = java.util.Arrays.copyOf(charArray, noEmpty);
             int lastStart = 0;
-            final int chEnd = lastStart + scratchChars.length();
+            final int chEnd = lastStart + noEmptyArray.length;
             int outputUpto = nextRead;
             for (int chIDX = lastStart; chIDX <= chEnd; chIDX++) {
-                if (chIDX == chEnd
-                        || scratchChars.charAt(chIDX) == SynonymMap.WORD_SEPARATOR) {
+                if (chIDX == chEnd) {
                     final int outputLen = chIDX - lastStart;
                     // Caller is not allowed to have empty string in
                     // the output:
                     assert outputLen > 0 : "output contains empty string: "
-                            + scratchChars;
+                            + scratchChars;                    
                     final int endOffset;
                     final int posLen;
                     if (chIDX == chEnd && lastStart == 0) {
@@ -354,8 +364,7 @@ public final class DynamicSynonymFilter extends TokenFilter {
                         endOffset = -1;
                         posLen = 1;
                     }
-                    futureOutputs[outputUpto].add(scratchChars.chars(),
-                            lastStart, outputLen, endOffset, posLen);
+                    futureOutputs[outputUpto].add(noEmptyArray, lastStart, outputLen, endOffset, posLen);
                     lastStart = 1 + chIDX;
                     outputUpto = rollIncr(outputUpto);
                     assert futureOutputs[outputUpto].posIncr == 1 : "outputUpto="

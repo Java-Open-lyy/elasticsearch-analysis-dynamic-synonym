@@ -192,24 +192,24 @@ public class RemoteSynonymFile implements SynonymFile {
         try {
             response = executeHttpRequest(head);
             if (response.getStatusLine().getStatusCode() == 200) { // 返回200 才做操作
-                if (!response.getLastHeader(LAST_MODIFIED_HEADER).getValue()
-                        .equalsIgnoreCase(lastModified)
-                        || !response.getLastHeader(ETAG_HEADER).getValue()
-                        .equalsIgnoreCase(eTags)) {
-
-                    lastModified = response.getLastHeader(LAST_MODIFIED_HEADER) == null ? null
-                            : response.getLastHeader(LAST_MODIFIED_HEADER)
-                            .getValue();
-                    eTags = response.getLastHeader(ETAG_HEADER) == null ? null
-                            : response.getLastHeader(ETAG_HEADER).getValue();
+                String lastModifiedHeader = response.getLastHeader(LAST_MODIFIED_HEADER) == null ? null
+                        : response.getLastHeader(LAST_MODIFIED_HEADER).getValue();
+                String eTagsHeader = response.getLastHeader(ETAG_HEADER) == null ? null
+                        : response.getLastHeader(ETAG_HEADER).getValue();
+                lastModifiedHeader = lastModifiedHeader == null ? "" : lastModifiedHeader;
+                eTagsHeader = eTagsHeader == null ? "" : eTagsHeader;
+                if (!lastModifiedHeader.equalsIgnoreCase(lastModified) || !eTagsHeader.equalsIgnoreCase(eTags)) {
+                    lastModified = lastModifiedHeader;
+                    eTags = eTagsHeader;
                     return true;
                 }
             } else if (response.getStatusLine().getStatusCode() == 304) {
                 return false;
             } else {
-                logger.info("remote synonym {} return bad code {}", location,
-                        response.getStatusLine().getStatusCode());
+                logger.info("remote synonym {} return bad code {}", location, response.getStatusLine().getStatusCode());
             }
+        } catch (Exception e) {
+            logger.error("failed to close http response", e);
         } finally {
             try {
                 if (response != null) {
